@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UDON - Generative Art & Music</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts for a modern, pop look -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- Tone.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+</head>
+<body>
+    <div id="start-screen" class="overlay active">
+        <div class="start-content">
+            <h1>UDON</h1>
+            <p>描く、鳴る、うどん。</p>
+            <button id="start-btn">START</button>
+        </div>
+    </div>
+
+    <div id="app" class="hidden">
+        <canvas id="main-canvas"></canvas>
+        
+        <div class="ui-panel">
+            <div class="control-group">
+                <h3>VIEW MODE</h3>
+                <div class="button-grid" id="view-mode-container">
+                    <button class="view-btn active" data-view="side">横から (Side)</button>
+                    <button class="view-btn" data-view="top">俯瞰 (Top)</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>NOODLE STYLE</h3>
+                <div class="button-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
+                    <button class="thick-btn active" data-thick="thick">太麺</button>
+                    <button class="thick-btn" data-thick="thin">細麺</button>
+                </div>
+                <div class="button-grid" style="grid-template-columns: 1fr 1fr;">
+                    <button class="hard-btn active" data-hard="soft">柔麺</button>
+                    <button class="hard-btn" data-hard="hard">硬麺</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>DRAW TOOL</h3>
+                <div class="button-grid" id="tools-container">
+                    <button class="tool-btn active" data-tool="noodle">うどん (麺)</button>
+                    <button class="tool-btn" data-tool="negi">ネギ</button>
+                    <button class="tool-btn" data-tool="wakame">わかめ</button>
+                    <button class="tool-btn" data-tool="gobo">ごぼ天</button>
+                    <button class="tool-btn" data-tool="maru">丸天</button>
+                    <button class="tool-btn" data-tool="niku">肉</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>SOUP COLOR</h3>
+                <div class="button-grid" id="colors-container">
+                    <button class="color-btn active" data-color="#3366ff">ブルー</button>
+                    <button class="color-btn" data-color="#ffcc00">黄色</button>
+                    <button class="color-btn" data-color="#ff3333">赤</button>
+                    <button class="color-btn" data-color="#ff33cc">ピンク</button>
+                    <button class="color-btn" data-color="#ff8800">オレンジ</button>
+                    <button class="color-btn" data-color="#9933ff">紫</button>
+                </div>
+            </div>
+            
+            <button id="clear-btn" class="danger-btn">どんぶりを空にする</button>
+        </div>
+    </div>
+
+    <!-- Scripts using ES Modules -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+:root {
+    --bg-color: #ffffff;
+    --line-color: #000000;
+    --accent-color: #000000;
+    --pink-strip: #ff80df; /* Left pink strip */
+    --navy-strip: #001a4d; /* Top navy strip */
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-color);
+    font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+    color: var(--line-color);
+}
+
+/* Colored Strips on Edges */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 30px; height: 100%;
+    background-color: var(--pink-strip);
+    z-index: -1;
+}
+
+body::after {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 30px;
+    background-color: var(--navy-strip);
+    z-index: -1;
+}
+
+/* OVERLAY START SCREEN */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    transition: opacity 0.5s ease;
+}
+
+.overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.start-content {
+    text-align: center;
+    border: 1px solid var(--line-color);
+    padding: 4rem;
+    background-color: #fff;
+    box-shadow: none;
+}
+
+.start-content h1 {
+    font-size: 4rem;
+    font-weight: 400;
+    letter-spacing: 2px;
+    margin-bottom: 0.5rem;
+    color: var(--line-color);
+}
+
+.start-content p {
+    font-size: 1rem;
+    font-weight: 400;
+    margin-bottom: 2rem;
+}
+
+#start-btn {
+    font-family: inherit;
+    font-size: 1.2rem;
+    font-weight: 400;
+    padding: 0.8rem 2.5rem;
+    background-color: #fff;
+    color: var(--line-color);
+    border: 1px solid var(--line-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#start-btn:hover {
+    background-color: #f0f0f0;
+}
+
+/* MAIN APP */
+#app {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    padding: 30px 0 0 30px; /* Offset for strips */
+}
+
+#app.hidden {
+    display: none;
+}
+
+#main-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+/* UI PANEL */
+.ui-panel {
+    position: absolute;
+    top: 50px;
+    right: 20px;
+    width: 280px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--line-color);
+    padding: 15px;
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    z-index: 10;
+}
+
+.control-group {
+    margin-bottom: 20px;
+}
+
+.control-group h3 {
+    font-size: 0.9rem;
+    font-weight: 400;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--line-color);
+    padding-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.button-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+button {
+    font-family: inherit;
+    font-weight: 400;
+    font-size: 0.8rem;
+    padding: 8px;
+    background-color: #fff;
+    border: 1px solid var(--line-color);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+button:hover {
+    background-color: #f5f5f5;
+}
+
+button.active, .topping-btn.active {
+    background-color: var(--line-color);
+    color: #fff;
+}
+
+.danger-btn {
+    width: 100%;
+    background-color: #fff;
+    color: var(--line-color);
+    margin-top: 10px;
+}
+.danger-btn:hover {
+    background-color: #ffe6e6;
+}
