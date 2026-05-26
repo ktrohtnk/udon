@@ -183,7 +183,7 @@ button.active, .topping-btn.active {
 }
 
 /* MOBILE RESPONSIVE LAYOUT */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     .ui-panel {
         top: auto;
         bottom: 0;
