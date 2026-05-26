@@ -92,11 +92,20 @@ function addTopping(x, y, type) {
         Y = y - topY;
         Z = (Math.random() - 0.5) * bowl.radiusOuter * 0.5; 
         
-        if (bowlCollision && Y > 0) {
-            const dist3D = Math.sqrt(X*X + Y*Y + Z*Z);
-            if (dist3D > bowl.radiusInner) {
-                const scale = bowl.radiusInner / dist3D;
-                X *= scale; Y *= scale; Z *= scale;
+        if (bowlCollision) {
+            const maxRadius = bowl.radiusOuter - 20;
+            if (Y > 0) {
+                const dist3D = Math.sqrt(X*X + Y*Y + Z*Z);
+                if (dist3D > maxRadius) {
+                    const scale = maxRadius / dist3D;
+                    X *= scale; Y *= scale; Z *= scale;
+                }
+            } else {
+                const dist2D = Math.sqrt(X*X + Z*Z);
+                if (dist2D > maxRadius) {
+                    const scale = maxRadius / dist2D;
+                    X *= scale; Z *= scale;
+                }
             }
         }
     } else {
@@ -105,9 +114,10 @@ function addTopping(x, y, type) {
         Y = (Math.random() - 0.5) * bowl.radiusOuter * 0.5;
         
         if (bowlCollision) {
+            const maxRadius = bowl.radiusOuter - 20;
             const dist2D = Math.sqrt(X*X + Z*Z);
-            if (dist2D > bowl.radiusInner) {
-                const scale = bowl.radiusInner / dist2D;
+            if (dist2D > maxRadius) {
+                const scale = maxRadius / dist2D;
                 X *= scale; Z *= scale;
             }
         }
@@ -190,11 +200,20 @@ function setupInput() {
             Y = clientY - topY;
             Z = Math.sin(i * 0.15 + phase) * (R * 0.4) + Math.cos(i * 0.05 + phase * 2) * (R * 0.2);
             
-            if (bowlCollision && Y > 0) {
-                const dist3D = Math.sqrt(X*X + Y*Y + Z*Z);
-                if (dist3D > bowl.radiusInner) {
-                    const scale = bowl.radiusInner / dist3D;
-                    X *= scale; Y *= scale; Z *= scale;
+            if (bowlCollision) {
+                const maxRadius = R - (currentPath.thickness === 'thick' ? 24 : 12);
+                if (Y > 0) {
+                    const dist3D = Math.sqrt(X*X + Y*Y + Z*Z);
+                    if (dist3D > maxRadius) {
+                        const scale = maxRadius / dist3D;
+                        X *= scale; Y *= scale; Z *= scale;
+                    }
+                } else {
+                    const dist2D = Math.sqrt(X*X + Z*Z);
+                    if (dist2D > maxRadius) {
+                        const scale = maxRadius / dist2D;
+                        X *= scale; Z *= scale;
+                    }
                 }
             }
         } else {
@@ -203,9 +222,10 @@ function setupInput() {
             Y = R * 0.4 + Math.sin(i * 0.15 + phase) * (R * 0.3);
             
             if (bowlCollision) {
+                const maxRadius = R - (currentPath.thickness === 'thick' ? 24 : 12);
                 const dist2D = Math.sqrt(X*X + Z*Z);
-                if (dist2D > bowl.radiusInner) {
-                    const scale = bowl.radiusInner / dist2D;
+                if (dist2D > maxRadius) {
+                    const scale = maxRadius / dist2D;
                     X *= scale; Z *= scale;
                 }
             }
