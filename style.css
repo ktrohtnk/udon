@@ -181,3 +181,62 @@ button.active, .topping-btn.active {
 .danger-btn:hover {
     background-color: #ffe6e6;
 }
+
+/* MOBILE RESPONSIVE LAYOUT */
+@media (max-width: 600px) {
+    .ui-panel {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 160px;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        align-items: flex-start;
+        padding: 15px;
+        border-top: 1px solid var(--line-color);
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+        -webkit-overflow-scrolling: touch;
+        background-color: rgba(255, 255, 255, 0.95);
+    }
+    
+    .control-group {
+        margin-bottom: 0;
+        margin-right: 25px;
+        min-width: max-content;
+    }
+    
+    .button-grid {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 8px;
+    }
+    
+    .button-grid button {
+        white-space: nowrap;
+        padding: 8px 12px;
+    }
+    
+    #clear-btn {
+        margin-top: 25px;
+        min-width: max-content;
+        height: max-content;
+        padding: 8px 16px;
+    }
+    
+    .start-content {
+        padding: 2rem;
+        width: 85%;
+    }
+    
+    .start-content h1 {
+        font-size: 2.5rem;
+    }
+}
