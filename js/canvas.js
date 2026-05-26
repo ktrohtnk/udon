@@ -10,6 +10,7 @@ export let noodleThickness = 'thick';
 export let noodleHardness = 'soft';
 export let currentTool = 'noodle';
 export let visualToppings = [];
+export let bowlCollision = false;
 
 // Bowl properties
 const bowl = {
@@ -58,6 +59,10 @@ export function setNoodleHardness(hard) {
     noodleHardness = hard;
 }
 
+export function setPhysicsMode(enabled) {
+    bowlCollision = enabled;
+}
+
 export function clearCanvas() {
     noodles = [];
     visualToppings = [];
@@ -86,10 +91,26 @@ function addTopping(x, y, type) {
         const topY = bowl.y + bowl.radiusOuter * 0.2;
         Y = y - topY;
         Z = (Math.random() - 0.5) * bowl.radiusOuter * 0.5; 
+        
+        if (bowlCollision && Y > 0) {
+            const dist3D = Math.sqrt(X*X + Y*Y + Z*Z);
+            if (dist3D > bowl.radiusInner) {
+                const scale = bowl.radiusInner / dist3D;
+                X *= scale; Y *= scale; Z *= scale;
+            }
+        }
     } else {
         X = x - bowl.x;
         Z = y - bowl.y;
         Y = (Math.random() - 0.5) * bowl.radiusOuter * 0.5;
+        
+        if (bowlCollision) {
+            const dist2D = Math.sqrt(X*X + Z*Z);
+            if (dist2D > bowl.radiusInner) {
+                const scale = bowl.radiusInner / dist2D;
+                X *= scale; Z *= scale;
+            }
+        }
     }
     
     visualToppings.push({
@@ -168,10 +189,26 @@ function setupInput() {
             X = clientX - bowl.x;
             Y = clientY - topY;
             Z = Math.sin(i * 0.15 + phase) * (R * 0.4) + Math.cos(i * 0.05 + phase * 2) * (R * 0.2);
+            
+            if (bowlCollision && Y > 0) {
+                const dist3D = Math.sqrt(X*X + Y*Y + Z*Z);
+                if (dist3D > bowl.radiusInner) {
+                    const scale = bowl.radiusInner / dist3D;
+                    X *= scale; Y *= scale; Z *= scale;
+                }
+            }
         } else {
             X = clientX - bowl.x;
             Z = clientY - bowl.y;
             Y = R * 0.4 + Math.sin(i * 0.15 + phase) * (R * 0.3);
+            
+            if (bowlCollision) {
+                const dist2D = Math.sqrt(X*X + Z*Z);
+                if (dist2D > bowl.radiusInner) {
+                    const scale = bowl.radiusInner / dist2D;
+                    X *= scale; Z *= scale;
+                }
+            }
         }
         
         currentPath.points.push({ x: clientX, y: clientY, X, Y, Z });
