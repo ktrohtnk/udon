@@ -423,30 +423,25 @@ function renderSideView(time) {
     
     // Soup physics
     const soupLevel = topY + bowl.depth * 0.25;
-    const tSoup = 0.25;
-    // X(t) = (1-t)^2 * R_out + 2(1-t)t * (0.9 * R_out) + t^2 * R_bot
-    const soupRadiusX = Math.pow(1 - tSoup, 2) * bowl.radiusOuter + 
-                        2 * (1 - tSoup) * tSoup * (bowl.radiusOuter * 0.9) + 
-                        Math.pow(tSoup, 2) * bowl.radiusBottom;
+    const soupRadiusX = bowl.radiusOuter - (bowl.radiusOuter - bowl.radiusBottom) * 0.25;
 
     // 1. Draw Soup Volume (Color Fill)
     ctx.save();
-    createBowlBodyPath(ctx, topY);
-    ctx.clip(); // Clip soup exactly to the curved bowl walls
-
     ctx.beginPath();
     for (let i = 0; i <= 40; i++) {
         const t = i / 40;
-        // draw wave wide enough to cover the bowl
-        const x = -bowl.radiusOuter + (bowl.radiusOuter * 2) * t;
+        const x = -soupRadiusX + (soupRadiusX * 2) * t;
         const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
         if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
         else ctx.lineTo(bowl.x + x, soupLevel + wave);
     }
-    // Connect to a box far below the bowl to fill the entire lower volume
-    ctx.lineTo(bowl.x + bowl.radiusOuter, bottomY + 100);
-    ctx.lineTo(bowl.x - bowl.radiusOuter, bottomY + 100);
+    ctx.lineTo(bowl.x + bowl.radiusOuter, height);
+    ctx.lineTo(bowl.x - bowl.radiusOuter, height);
     ctx.closePath();
+    ctx.clip(); // Clip everything below the soup surface
+    
+    // Fill the bowl body
+    createBowlBodyPath(ctx, topY);
     ctx.fillStyle = soupColor;
     ctx.fill();
     ctx.restore();
@@ -480,7 +475,7 @@ function renderSideView(time) {
     ctx.beginPath();
     for (let i = 0; i <= 40; i++) {
         const t = i / 40;
-        const x = -bowl.radiusOuter + (bowl.radiusOuter * 2) * t;
+        const x = -soupRadiusX + (soupRadiusX * 2) * t;
         const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
         if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
         else ctx.lineTo(bowl.x + x, soupLevel + wave);
@@ -491,6 +486,7 @@ function renderSideView(time) {
     ctx.clip();
     
     createBowlBodyPath(ctx, topY);
+    ctx.closePath(); // Ensure path is closed before clipping
     ctx.clip();
     
     // Redraw only fills with soupColor and isSubmerged = true for refraction
@@ -506,7 +502,7 @@ function renderSideView(time) {
     ctx.ellipse(bowl.x, bottomY + footHeight, footRadius * 0.95, footRadius * 0.95 * 0.15, 0, Math.PI, 0, true);
     ctx.lineTo(bowl.x + footRadius, bottomY);
     ctx.lineWidth = 1.5;
-    ctx.strokeStyle = '#000'; // Make sure the stroke style is black
+    ctx.strokeStyle = '#000';
     ctx.stroke();
 
     // 7. Draw Bowl Pattern on transparent glass
@@ -517,7 +513,6 @@ function renderSideView(time) {
         ctx.lineJoin = 'round';
 
         // Clip to the OUTSIDE front face of the bowl body AND the foot
-        // To do this, we create a path combining both.
         ctx.beginPath();
         ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, 0, true); // Left to right front rim
         ctx.quadraticCurveTo(bowl.x + bowl.radiusOuter * 0.9, topY + bowl.depth * 0.5, bowl.x + bowl.radiusBottom, bottomY); // Right side
@@ -540,30 +535,33 @@ function renderSideView(time) {
             const xBot = bowl.radiusBottom * Math.sin(t);
             const xFoot = footRadius * Math.sin(t);
             
+            const yTop = topY + (bowl.radiusOuter * 0.15) * Math.cos(t);
+            const yBot = bottomY + (bowl.radiusBottom * 0.15) * Math.cos(t);
+            const yFootBot = bottomY + footHeight + (footRadius * 0.95 * 0.15) * Math.cos(t);
+            
             ctx.beginPath();
-            ctx.moveTo(bowl.x + xTop, topY);
+            ctx.moveTo(bowl.x + xTop, yTop);
             const xCp = (bowl.radiusOuter * 0.9) * Math.sin(t);
-            ctx.quadraticCurveTo(bowl.x + xCp, topY + bowl.depth * 0.5, bowl.x + xBot, bottomY);
-            // Continue into foot (extend well past the bottom so clip mask cuts it perfectly on the curve)
-            ctx.lineTo(bowl.x + xFoot, bottomY + footHeight + 50);
+            ctx.quadraticCurveTo(bowl.x + xCp, topY + bowl.depth * 0.5, bowl.x + xBot, yBot);
+            // Continue into foot
+            ctx.lineTo(bowl.x + xFoot, yFootBot);
             ctx.stroke();
         }
 
         // Horizontal lines
         if (bowlPattern.startsWith('grid')) {
-            const numHorizontal = isThin ? 7 : 5;
-            for (let i = 1; i <= numHorizontal; i++) {
-                const t = i / numHorizontal;
+            const numHorizontal = isThin ? 8 : 5;
+            for (let i = 1; i <= numHorizontal; i++) { // Go to numHorizontal
+                const t = i / (numHorizontal + 1);
                 const h = bowl.depth * t;
-                // Width at this height
                 const r = bowl.radiusOuter - (bowl.radiusOuter - bowl.radiusBottom) * t;
-                const rx = r * (1 + 0.05 * Math.sin(t * Math.PI)); // slightly convex
+                const rx = r * (1 + 0.1 * Math.sin(t * Math.PI)); // match convex curve
                 const ry = rx * 0.15;
                 ctx.beginPath();
                 ctx.ellipse(bowl.x, topY + h, rx, ry, 0, 0, Math.PI);
                 ctx.stroke();
             }
-            // Add horizontal lines on the foot
+            // Add one horizontal line on the foot
             ctx.beginPath();
             ctx.ellipse(bowl.x, bottomY + footHeight * 0.5, footRadius * 0.95, footRadius * 0.95 * 0.15, 0, 0, Math.PI);
             ctx.stroke();
