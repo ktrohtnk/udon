@@ -42,6 +42,8 @@ function resize() {
     bowl.y = height / 2;
     bowl.radiusOuter = Math.min(width, height) * 0.35;
     bowl.radiusInner = bowl.radiusOuter * 0.9;
+    bowl.radiusBottom = bowl.radiusOuter * 0.45;
+    bowl.depth = bowl.radiusOuter * 0.8;
 }
 
 export function setSoupColor(color) {
@@ -68,6 +70,36 @@ export function setBowlPattern(pattern) {
     bowlPattern = pattern;
 }
 
+function clampToBowl(x, y, z, thicknessMode) {
+    if (!bowlCollision) return { x, y, z };
+    const maxRadiusTop = bowl.radiusOuter - (thicknessMode === 'thick' ? 24 : 12);
+    const maxRadiusBot = bowl.radiusBottom - (thicknessMode === 'thick' ? 24 : 12);
+    
+    let maxRadius;
+    if (y <= 0) {
+        maxRadius = maxRadiusTop;
+    } else if (y >= bowl.depth) {
+        maxRadius = maxRadiusBot;
+    } else {
+        // Linear interpolation for conical shape
+        maxRadius = maxRadiusTop - (maxRadiusTop - maxRadiusBot) * (y / bowl.depth);
+    }
+    
+    // Horizontal clamping
+    const dist2D = Math.sqrt(x*x + z*z);
+    if (dist2D > maxRadius) {
+        const scale = maxRadius / dist2D;
+        x *= scale; z *= scale;
+    }
+    
+    // Vertical clamping (don't penetrate the bottom)
+    if (y > bowl.depth) {
+        y = bowl.depth;
+    }
+    
+    return { x, y, z };
+}
+
 export function clearCanvas() {
     noodles = [];
     visualToppings = [];
@@ -92,28 +124,14 @@ function addTopping(x, y, type) {
     let X = x - bowl.x;
     let Y = 0, Z = 0;
     
-    if (currentViewMode === 'side') {
-        const topY = bowl.y + bowl.radiusOuter * 0.2;
-        Y = y - topY;
-        Z = (Math.random() - 0.5) * bowl.radiusOuter * 0.5; 
-        
-        if (bowlCollision) {
-            const maxRadius = bowl.radiusOuter - 20;
-            if (Y > 0) {
-                const dist3D = Math.sqrt(X*X + Y*Y + Z*Z);
-                if (dist3D > maxRadius) {
-                    const scale = maxRadius / dist3D;
-                    X *= scale; Y *= scale; Z *= scale;
-                }
-            } else {
-                const dist2D = Math.sqrt(X*X + Z*Z);
-                if (dist2D > maxRadius) {
-                    const scale = maxRadius / dist2D;
-                    X *= scale; Z *= scale;
-                }
-            }
-        }
-    } else {
+        if (currentViewMode === 'side') {
+            const topY = bowl.y + bowl.radiusOuter * 0.2;
+            Y = y - topY;
+            Z = (Math.random() - 0.5) * bowl.radiusOuter * 0.5; 
+            
+            const clamped = clampToBowl(X, Y, Z, 'thick'); // Toppings use 'thick' margin
+            X = clamped.x; Y = clamped.y; Z = clamped.z;
+        } else {
         X = x - bowl.x;
         Z = y - bowl.y;
         Y = (Math.random() - 0.5) * bowl.radiusOuter * 0.5;
@@ -205,22 +223,8 @@ function setupInput() {
             Y = clientY - topY;
             Z = Math.sin(i * 0.15 + phase) * (R * 0.4) + Math.cos(i * 0.05 + phase * 2) * (R * 0.2);
             
-            if (bowlCollision) {
-                const maxRadius = R - (currentPath.thickness === 'thick' ? 24 : 12);
-                if (Y > 0) {
-                    const dist3D = Math.sqrt(X*X + Y*Y + Z*Z);
-                    if (dist3D > maxRadius) {
-                        const scale = maxRadius / dist3D;
-                        X *= scale; Y *= scale; Z *= scale;
-                    }
-                } else {
-                    const dist2D = Math.sqrt(X*X + Z*Z);
-                    if (dist2D > maxRadius) {
-                        const scale = maxRadius / dist2D;
-                        X *= scale; Z *= scale;
-                    }
-                }
-            }
+            const clamped = clampToBowl(X, Y, Z, currentPath.thickness);
+            X = clamped.x; Y = clamped.y; Z = clamped.z;
         } else {
             X = clientX - bowl.x;
             Z = clientY - bowl.y;
@@ -298,15 +302,23 @@ function getDepth(item) {
     return sum / item.points.length;
 }
 
+function createBowlBodyPath(ctx, topY) {
+    const bottomY = topY + bowl.depth;
+    ctx.beginPath();
+    ctx.moveTo(bowl.x - bowl.radiusOuter, topY);
+    ctx.quadraticCurveTo(bowl.x - bowl.radiusOuter * 0.9, topY + bowl.depth * 0.5, bowl.x - bowl.radiusBottom, bottomY);
+    ctx.ellipse(bowl.x, bottomY, bowl.radiusBottom, bowl.radiusBottom * 0.15, 0, Math.PI, 0, true);
+    ctx.quadraticCurveTo(bowl.x + bowl.radiusOuter * 0.9, topY + bowl.depth * 0.5, bowl.x + bowl.radiusOuter, topY);
+}
+
 function renderSideView(time) {
     const topY = bowl.y + bowl.radiusOuter * 0.2;
+    const bottomY = topY + bowl.depth;
     const soupColor = activeSoupColor;
     
     // Soup physics
-    const soupLevel = topY + bowl.radiusOuter * 0.3;
-    const dy = soupLevel - topY;
-    const soupRadiusX = Math.sqrt(Math.pow(bowl.radiusOuter, 2) - Math.pow(dy, 2));
-    const theta = Math.asin(dy / bowl.radiusOuter);
+    const soupLevel = topY + bowl.depth * 0.25;
+    const soupRadiusX = bowl.radiusOuter - (bowl.radiusOuter - bowl.radiusBottom) * 0.25;
 
     // 1. Draw Soup Volume (Color Fill)
     ctx.beginPath();
@@ -317,7 +329,10 @@ function renderSideView(time) {
         if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
         else ctx.lineTo(bowl.x + x, soupLevel + wave);
     }
-    ctx.arc(bowl.x, topY, bowl.radiusOuter, theta, Math.PI - theta, false);
+    // Connect to bottom
+    ctx.lineTo(bowl.x + bowl.radiusBottom, bottomY);
+    ctx.ellipse(bowl.x, bottomY, bowl.radiusBottom, bowl.radiusBottom * 0.15, 0, 0, Math.PI);
+    ctx.lineTo(bowl.x - bowl.radiusBottom, bottomY);
     ctx.closePath();
     ctx.fillStyle = soupColor;
     ctx.fill();
@@ -331,14 +346,14 @@ function renderSideView(time) {
         if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
         else ctx.lineTo(bowl.x + x, soupLevel + wave);
     }
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
     ctx.strokeStyle = '#000';
     ctx.stroke();
 
     // 3. Draw Back of Glass Bowl Rim
     ctx.beginPath();
     ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, Math.PI * 2);
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 1.5;
     ctx.strokeStyle = '#000';
     ctx.stroke();
 
@@ -356,7 +371,12 @@ function renderSideView(time) {
         if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
         else ctx.lineTo(bowl.x + x, soupLevel + wave);
     }
-    ctx.arc(bowl.x, topY, bowl.radiusOuter, theta, Math.PI - theta, false);
+    ctx.lineTo(bowl.x + bowl.radiusOuter, height);
+    ctx.lineTo(bowl.x - bowl.radiusOuter, height);
+    ctx.closePath();
+    ctx.clip();
+    
+    createBowlBodyPath(ctx, topY);
     ctx.closePath();
     ctx.clip();
     
@@ -364,60 +384,92 @@ function renderSideView(time) {
     renderItems(allItems, currentPath, time, soupColor, true);
     ctx.restore();
 
-    // 6. Draw Front of Glass Bowl Rim
+    // 6. Draw Bowl Foot (Koudai)
+    const footHeight = bowl.radiusOuter * 0.12;
+    const footRadius = bowl.radiusBottom * 0.7;
     ctx.beginPath();
-    ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, 0, Math.PI);
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = '#000';
+    ctx.moveTo(bowl.x - footRadius, bottomY);
+    ctx.lineTo(bowl.x - footRadius * 0.95, bottomY + footHeight);
+    ctx.ellipse(bowl.x, bottomY + footHeight, footRadius * 0.95, footRadius * 0.95 * 0.15, 0, Math.PI, 0, true);
+    ctx.lineTo(bowl.x + footRadius, bottomY);
+    // Hide lines inside the foot if transparent? Let's just draw the stroke and fill white if opaque.
+    // The user wants it exactly like illustration. Illustration has white bowl body.
+    // But user said "透けるようにとりあえずよろしく" (Just make it transparent for now).
+    // So no white fill.
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // 7. Draw Glass Bowl Body
-    ctx.beginPath();
-    ctx.arc(bowl.x, topY, bowl.radiusOuter, 0, Math.PI, false);
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
-
-    // 8. Draw Bowl Pattern on transparent glass
+    // 7. Draw Bowl Pattern on transparent glass
     if (bowlPattern !== 'glass') {
         ctx.save();
         ctx.strokeStyle = '#000';
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
 
-        const isThin = bowlPattern === 'grid-thin';
-        const numVertical = isThin ? 12 : (bowlPattern === 'stripe' ? 8 : 6);
-        ctx.lineWidth = isThin ? 3 : 8;
+        // Clip to the OUTSIDE front face of the bowl body AND the foot
+        // To do this, we create a path combining both.
+        ctx.beginPath();
+        ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, 0, true); // Left to right front rim
+        ctx.quadraticCurveTo(bowl.x + bowl.radiusOuter * 0.9, topY + bowl.depth * 0.5, bowl.x + bowl.radiusBottom, bottomY); // Right side
+        ctx.lineTo(bowl.x + footRadius, bottomY); // To foot
+        ctx.lineTo(bowl.x + footRadius * 0.95, bottomY + footHeight); // Down foot
+        ctx.ellipse(bowl.x, bottomY + footHeight, footRadius * 0.95, footRadius * 0.95 * 0.15, 0, 0, Math.PI, false); // Bottom foot curve (right to left)
+        ctx.lineTo(bowl.x - footRadius, bottomY); // Up foot
+        ctx.lineTo(bowl.x - bowl.radiusBottom, bottomY); // To bottom edge
+        ctx.quadraticCurveTo(bowl.x - bowl.radiusOuter * 0.9, topY + bowl.depth * 0.5, bowl.x - bowl.radiusOuter, topY); // Left side
+        ctx.clip();
 
+        const isThin = bowlPattern === 'grid-thin';
+        const numVertical = isThin ? 16 : (bowlPattern === 'stripe' ? 10 : 8);
+        ctx.lineWidth = isThin ? 1 : (bowlPattern === 'stripe' ? 8 : 4);
+
+        // Vertical lines
         for (let i = 1; i < numVertical; i++) {
             const t = (i / numVertical) * Math.PI - (Math.PI / 2);
-            const rx = bowl.radiusOuter * Math.sin(t);
-            const absRx = Math.abs(rx);
-            if (absRx > 0.1) {
-                ctx.beginPath();
-                ctx.ellipse(bowl.x, topY, absRx, bowl.radiusOuter, 0, 0, Math.PI);
-                ctx.stroke();
-            } else {
-                ctx.beginPath();
-                ctx.moveTo(bowl.x, topY);
-                ctx.lineTo(bowl.x, topY + bowl.radiusOuter);
-                ctx.stroke();
-            }
+            const xTop = bowl.radiusOuter * Math.sin(t);
+            const xBot = bowl.radiusBottom * Math.sin(t);
+            const xFoot = footRadius * Math.sin(t);
+            
+            ctx.beginPath();
+            ctx.moveTo(bowl.x + xTop, topY);
+            const xCp = (bowl.radiusOuter * 0.9) * Math.sin(t);
+            ctx.quadraticCurveTo(bowl.x + xCp, topY + bowl.depth * 0.5, bowl.x + xBot, bottomY);
+            // Continue into foot
+            ctx.lineTo(bowl.x + xFoot, bottomY + footHeight);
+            ctx.stroke();
         }
 
+        // Horizontal lines
         if (bowlPattern.startsWith('grid')) {
-            const numHorizontal = isThin ? 6 : 4;
+            const numHorizontal = isThin ? 7 : 5;
             for (let i = 1; i < numHorizontal; i++) {
-                const h = (i / numHorizontal) * bowl.radiusOuter;
-                const rx = Math.sqrt(Math.pow(bowl.radiusOuter, 2) - Math.pow(h, 2));
+                const t = i / numHorizontal;
+                const h = bowl.depth * t;
+                const r = bowl.radiusOuter - (bowl.radiusOuter - bowl.radiusBottom) * t;
+                const rx = r * (1 + 0.1 * Math.sin(t * Math.PI)); // match convex curve
                 const ry = rx * 0.15;
                 ctx.beginPath();
                 ctx.ellipse(bowl.x, topY + h, rx, ry, 0, 0, Math.PI);
                 ctx.stroke();
             }
+            // Add one horizontal line on the foot
+            ctx.beginPath();
+            ctx.ellipse(bowl.x, bottomY + footHeight * 0.5, footRadius * 0.95, footRadius * 0.95 * 0.15, 0, 0, Math.PI);
+            ctx.stroke();
         }
         ctx.restore();
     }
+
+    // 8. Draw Front of Glass Bowl Rim & Body Strokes
+    ctx.beginPath();
+    ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, 0, Math.PI);
+    ctx.lineWidth = bowlPattern === 'grid-thick' ? 5 : 1.5;
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+
+    createBowlBodyPath(ctx, topY);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 }
 
 function renderTopView(time) {
@@ -429,17 +481,17 @@ function renderTopView(time) {
     ctx.fillStyle = soupColor;
     ctx.fill();
 
-    // Draw Glass Bowl Outer Rim
+    // Draw Bowl Outer Rim
     ctx.beginPath();
     ctx.arc(bowl.x, bowl.y, bowl.radiusOuter, 0, Math.PI * 2);
-    ctx.lineWidth = 8;
+    ctx.lineWidth = bowlPattern === 'grid-thick' ? 5 : 1.5;
     ctx.strokeStyle = '#000';
     ctx.stroke();
     
-    // Draw Glass Bowl Inner Rim
+    // Draw Bowl Inner Rim
     ctx.beginPath();
     ctx.arc(bowl.x, bowl.y, bowl.radiusInner, 0, Math.PI * 2);
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 1.5;
     ctx.strokeStyle = '#000';
     ctx.stroke();
 
