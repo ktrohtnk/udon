@@ -72,6 +72,25 @@ export function setBowlPattern(pattern) {
 
 function clampToBowl(x, y, z, thicknessMode) {
     if (!bowlCollision) return { x, y, z };
+    
+    if (bowlPattern === 'glass') {
+        const maxRadius = bowl.radiusOuter - (thicknessMode === 'thick' ? 24 : 12);
+        if (y > 0) {
+            const dist3D = Math.sqrt(x*x + y*y + z*z);
+            if (dist3D > maxRadius) {
+                const scale = maxRadius / dist3D;
+                x *= scale; y *= scale; z *= scale;
+            }
+        } else {
+            const dist2D = Math.sqrt(x*x + z*z);
+            if (dist2D > maxRadius) {
+                const scale = maxRadius / dist2D;
+                x *= scale; z *= scale;
+            }
+        }
+        return { x, y, z };
+    }
+
     const maxRadiusTop = bowl.radiusOuter - (thicknessMode === 'thick' ? 24 : 12);
     const maxRadiusBot = bowl.radiusBottom - (thicknessMode === 'thick' ? 24 : 12);
     
@@ -311,10 +330,96 @@ function createBowlBodyPath(ctx, topY) {
     ctx.quadraticCurveTo(bowl.x + bowl.radiusOuter * 0.9, topY + bowl.depth * 0.5, bowl.x + bowl.radiusOuter, topY);
 }
 
+function renderSideViewOriginalGlass(time, topY, soupColor) {
+    // Soup physics
+    const soupLevel = topY + bowl.radiusOuter * 0.3;
+    const dy = soupLevel - topY;
+    const soupRadiusX = Math.sqrt(Math.pow(bowl.radiusOuter, 2) - Math.pow(dy, 2));
+    const theta = Math.asin(dy / bowl.radiusOuter);
+
+    // 1. Draw Soup Volume (Color Fill)
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i++) {
+        const t = i / 40;
+        const x = -soupRadiusX + (soupRadiusX * 2) * t;
+        const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
+        if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
+        else ctx.lineTo(bowl.x + x, soupLevel + wave);
+    }
+    ctx.arc(bowl.x, topY, bowl.radiusOuter, theta, Math.PI - theta, false);
+    ctx.closePath();
+    ctx.fillStyle = soupColor;
+    ctx.fill();
+
+    // 2. Draw Soup Surface Line (Black Stroke)
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i++) {
+        const t = i / 40;
+        const x = -soupRadiusX + (soupRadiusX * 2) * t;
+        const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
+        if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
+        else ctx.lineTo(bowl.x + x, soupLevel + wave);
+    }
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+
+    // 3. Draw Back of Glass Bowl Rim
+    ctx.beginPath();
+    ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, Math.PI * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+
+    // 4. Draw Items (Full: White Fill + Black Outline)
+    const allItems = [...noodles, ...visualToppings].sort((a, b) => getDepth(a) - getDepth(b));
+    renderItems(allItems, currentPath, time, '#fff');
+
+    // 5. Draw Noodles (Clipped to Soup: Color Fill)
+    ctx.save();
+    ctx.beginPath();
+    for (let i = 0; i <= 40; i++) {
+        const t = i / 40;
+        const x = -soupRadiusX + (soupRadiusX * 2) * t;
+        const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
+        if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
+        else ctx.lineTo(bowl.x + x, soupLevel + wave);
+    }
+    ctx.arc(bowl.x, topY, bowl.radiusOuter, theta, Math.PI - theta, false);
+    ctx.closePath();
+    ctx.clip();
+    
+    // Redraw only fills with soupColor and isSubmerged = true for refraction
+    renderItems(allItems, currentPath, time, soupColor, true);
+    ctx.restore();
+
+    // 6. Draw Front of Glass Bowl Rim
+    ctx.beginPath();
+    ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, 0, Math.PI);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+
+    // 7. Draw Glass Bowl Body
+    ctx.beginPath();
+    ctx.arc(bowl.x, topY, bowl.radiusOuter, 0, Math.PI, false);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#000';
+    ctx.stroke();
+}
+
 function renderSideView(time) {
     const topY = bowl.y + bowl.radiusOuter * 0.2;
-    const bottomY = topY + bowl.depth;
     const soupColor = activeSoupColor;
+    
+    // Branch based on bowlPattern
+    if (bowlPattern === 'glass') {
+        renderSideViewOriginalGlass(time, topY, soupColor);
+        return;
+    }
+    
+    // --- New Conical Bowl Logic ---
+    const bottomY = topY + bowl.depth;
     
     // Soup physics
     const soupLevel = topY + bowl.depth * 0.25;
@@ -392,15 +497,12 @@ function renderSideView(time) {
     ctx.lineTo(bowl.x - footRadius * 0.95, bottomY + footHeight);
     ctx.ellipse(bowl.x, bottomY + footHeight, footRadius * 0.95, footRadius * 0.95 * 0.15, 0, Math.PI, 0, true);
     ctx.lineTo(bowl.x + footRadius, bottomY);
-    // Hide lines inside the foot if transparent? Let's just draw the stroke and fill white if opaque.
-    // The user wants it exactly like illustration. Illustration has white bowl body.
-    // But user said "透けるようにとりあえずよろしく" (Just make it transparent for now).
-    // So no white fill.
     ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#000'; // Make sure the stroke style is black
     ctx.stroke();
 
     // 7. Draw Bowl Pattern on transparent glass
-    if (bowlPattern !== 'glass') {
+    if (bowlPattern !== 'clear') {
         ctx.save();
         ctx.strokeStyle = '#000';
         ctx.lineCap = 'round';
