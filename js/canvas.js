@@ -11,6 +11,7 @@ export let noodleHardness = 'soft';
 export let currentTool = 'noodle';
 export let visualToppings = [];
 export let bowlCollision = false;
+export let bowlPattern = 'glass';
 
 // Bowl properties
 const bowl = {
@@ -61,6 +62,10 @@ export function setNoodleHardness(hard) {
 
 export function setPhysicsMode(enabled) {
     bowlCollision = enabled;
+}
+
+export function setBowlPattern(pattern) {
+    bowlPattern = pattern;
 }
 
 export function clearCanvas() {
@@ -333,6 +338,8 @@ function renderSideView(time) {
     // 3. Draw Back of Glass Bowl Rim
     ctx.beginPath();
     ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, Math.PI * 2);
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#000';
     ctx.stroke();
 
     // 4. Draw Items (Full: White Fill + Black Outline)
@@ -360,16 +367,57 @@ function renderSideView(time) {
     // 6. Draw Front of Glass Bowl Rim
     ctx.beginPath();
     ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, 0, Math.PI);
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 8;
     ctx.strokeStyle = '#000';
     ctx.stroke();
 
     // 7. Draw Glass Bowl Body
     ctx.beginPath();
     ctx.arc(bowl.x, topY, bowl.radiusOuter, 0, Math.PI, false);
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 8;
     ctx.strokeStyle = '#000';
     ctx.stroke();
+
+    // 8. Draw Bowl Pattern on transparent glass
+    if (bowlPattern !== 'glass') {
+        ctx.save();
+        ctx.strokeStyle = '#000';
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        const isThin = bowlPattern === 'grid-thin';
+        const numVertical = isThin ? 12 : (bowlPattern === 'stripe' ? 8 : 6);
+        ctx.lineWidth = isThin ? 3 : 8;
+
+        for (let i = 1; i < numVertical; i++) {
+            const t = (i / numVertical) * Math.PI - (Math.PI / 2);
+            const rx = bowl.radiusOuter * Math.sin(t);
+            const absRx = Math.abs(rx);
+            if (absRx > 0.1) {
+                ctx.beginPath();
+                ctx.ellipse(bowl.x, topY, absRx, bowl.radiusOuter, 0, 0, Math.PI);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(bowl.x, topY);
+                ctx.lineTo(bowl.x, topY + bowl.radiusOuter);
+                ctx.stroke();
+            }
+        }
+
+        if (bowlPattern.startsWith('grid')) {
+            const numHorizontal = isThin ? 6 : 4;
+            for (let i = 1; i < numHorizontal; i++) {
+                const h = (i / numHorizontal) * bowl.radiusOuter;
+                const rx = Math.sqrt(Math.pow(bowl.radiusOuter, 2) - Math.pow(h, 2));
+                const ry = rx * 0.15;
+                ctx.beginPath();
+                ctx.ellipse(bowl.x, topY + h, rx, ry, 0, 0, Math.PI);
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
 }
 
 function renderTopView(time) {
@@ -384,13 +432,15 @@ function renderTopView(time) {
     // Draw Glass Bowl Outer Rim
     ctx.beginPath();
     ctx.arc(bowl.x, bowl.y, bowl.radiusOuter, 0, Math.PI * 2);
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 8;
     ctx.strokeStyle = '#000';
     ctx.stroke();
     
     // Draw Glass Bowl Inner Rim
     ctx.beginPath();
     ctx.arc(bowl.x, bowl.y, bowl.radiusInner, 0, Math.PI * 2);
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#000';
     ctx.stroke();
 
     // Draw Items

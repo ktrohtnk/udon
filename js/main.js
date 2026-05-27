@@ -1,7 +1,7 @@
 // main.js - Application entry point and UI logic
 
 import { initAudio, toggleTopping, updateNoodles, clearNoodles as audioClear } from './audio.js';
-import { initCanvas, setSoupColor, clearCanvas, getNoodlesData, setViewMode, setNoodleThickness, setNoodleHardness, setDrawTool, getActiveToppings, setPhysicsMode } from './canvas.js';
+import { initCanvas, setSoupColor, clearCanvas, getNoodlesData, setViewMode, setNoodleThickness, setNoodleHardness, setDrawTool, getActiveToppings, setPhysicsMode, setBowlPattern } from './canvas.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     // UI Elements
@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toolBtns = document.querySelectorAll('.tool-btn');
     const colorBtns = document.querySelectorAll('.color-btn');
     const viewBtns = document.querySelectorAll('.view-btn');
+    const bowlBtns = document.querySelectorAll('.bowl-btn');
     const physicsBtns = document.querySelectorAll('.physics-btn');
     const thickBtns = document.querySelectorAll('.thick-btn');
     const hardBtns = document.querySelectorAll('.hard-btn');
@@ -23,6 +24,15 @@ document.addEventListener('DOMContentLoaded', () => {
             viewBtns.forEach(b => b.classList.remove('active'));
             e.currentTarget.classList.add('active');
             setViewMode(e.currentTarget.dataset.view);
+        });
+    });
+
+    // Bowl Pattern Toggle
+    bowlBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            bowlBtns.forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            setBowlPattern(e.currentTarget.dataset.pattern);
         });
     });
 
