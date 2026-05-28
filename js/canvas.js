@@ -223,6 +223,43 @@ function setupInput() {
         window.dispatchEvent(new CustomEvent('noodlesUpdated'));
     };
     
+    window.exportHighResImage = function() {
+        const scale = 4;
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = width * scale;
+        exportCanvas.height = height * scale;
+        const exportCtx = exportCanvas.getContext('2d');
+        
+        // Fill white background if bowl is not hidden
+        if (bowlPattern !== 'hidden') {
+            exportCtx.fillStyle = '#fff';
+            exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+        }
+        
+        exportCtx.scale(scale, scale);
+        
+        // Swap ctx temporarily
+        const originalCtx = ctx;
+        ctx = exportCtx;
+        
+        const time = performance.now();
+        if (currentViewMode === 'side') {
+            renderSideView(time);
+        } else {
+            renderTopView(time);
+        }
+        
+        // Restore
+        ctx = originalCtx;
+        
+        // Download
+        const dataURL = exportCanvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.download = `udon_art_${Date.now()}.png`;
+        link.href = dataURL;
+        link.click();
+    };
+    
     const addPoint = (e) => {
         let clientX = e.clientX;
         let clientY = e.clientY;
@@ -413,6 +450,12 @@ function renderSideView(time) {
     const soupColor = activeSoupColor;
     
     // Branch based on bowlPattern
+    if (bowlPattern === 'hidden') {
+        const allItems = [...noodles, ...visualToppings].sort((a, b) => getDepth(a) - getDepth(b));
+        renderItems(allItems, currentPath, time, '#fff');
+        return;
+    }
+    
     if (bowlPattern === 'glass') {
         renderSideViewOriginalGlass(time, topY, soupColor);
         return;
@@ -582,6 +625,12 @@ function renderSideView(time) {
 }
 
 function renderTopView(time) {
+    if (bowlPattern === 'hidden') {
+        const allItems = [...noodles, ...visualToppings].sort((a, b) => getDepth(a) - getDepth(b));
+        renderItems(allItems, currentPath, time, '#fff');
+        return;
+    }
+
     const soupColor = activeSoupColor;
 
     // Soup is a circle inside

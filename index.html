@@ -33,9 +33,10 @@
 
             <div class="control-group">
                 <h3>BOWL DESIGN</h3>
-                <div class="button-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
-                    <button class="bowl-btn active" data-pattern="glass">ガラス(半球)</button>
-                    <button class="bowl-btn" data-pattern="clear">クリア(高台)</button>
+                <div class="button-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 8px;">
+                    <button class="bowl-btn active" data-pattern="glass" style="font-size: 11px;">ガラス</button>
+                    <button class="bowl-btn" data-pattern="clear" style="font-size: 11px;">高台</button>
+                    <button class="bowl-btn" data-pattern="hidden" style="font-size: 11px;">非表示</button>
                 </div>
                 <div class="button-grid" style="grid-template-columns: 1fr 1fr 1fr;">
                     <button class="bowl-btn" data-pattern="stripe" style="font-size: 11px;">ストライプ</button>
@@ -88,7 +89,10 @@
                 </div>
             </div>
             
-            <button id="clear-btn" class="danger-btn">どんぶりを空にする</button>
+            <div class="button-grid" style="margin-top: auto; padding-top: 15px; grid-template-columns: 1fr 1fr;">
+                <button id="clear-btn" class="danger-btn">どんぶりを空にする</button>
+                <button id="export-svg-btn" class="action-btn" style="background: #27ae60; color: white;">保存 (高画質PNG)</button>
+            </div>
         </div>
     </div>
 

@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const app = document.getElementById('app');
     const canvasEl = document.getElementById('main-canvas');
     const clearBtn = document.getElementById('clear-btn');
+    const exportBtn = document.getElementById('export-svg-btn');
     const toolBtns = document.querySelectorAll('.tool-btn');
     const colorBtns = document.querySelectorAll('.color-btn');
     const viewBtns = document.querySelectorAll('.view-btn');
@@ -108,6 +109,13 @@ document.addEventListener('DOMContentLoaded', () => {
     clearBtn.addEventListener('click', () => {
         clearCanvas();
         audioClear();
+    });
+
+    // Export Image
+    exportBtn.addEventListener('click', () => {
+        if (window.exportHighResImage) {
+            window.exportHighResImage();
+        }
     });
 
     // Listen to custom event from canvas when drawing finishes
