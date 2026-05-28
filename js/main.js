@@ -1,7 +1,7 @@
 // main.js - Application entry point and UI logic
 
-import { initAudio, toggleTopping, updateNoodles, clearNoodles as audioClear } from './audio.js';
-import { initCanvas, setSoupColor, clearCanvas, getNoodlesData, setViewMode, setNoodleThickness, setNoodleHardness, setDrawTool, getActiveToppings, setPhysicsMode, setBowlPattern } from './canvas.js';
+import { initAudio, toggleTopping, updateNoodles, clearNoodles as audioClear } from './audio.js?v=4';
+import { initCanvas, setSoupColor, clearCanvas, getNoodlesData, setViewMode, setNoodleThickness, setNoodleHardness, setDrawTool, getActiveToppings, setPhysicsMode, setBowlPattern } from './canvas.js?v=4';
 
 document.addEventListener('DOMContentLoaded', () => {
     // UI Elements
