@@ -359,8 +359,6 @@ function createBowlBodyPath(ctx, topY) {
     
     // 5. Left arc from thetaLeft to Math.PI
     ctx.arc(bowl.x, topY, bowl.radiusOuter, thetaLeft, Math.PI, false);
-    
-    ctx.closePath();
 }
 
 function renderSideView(time) {
