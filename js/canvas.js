@@ -73,19 +73,15 @@ export function setBowlPattern(pattern) {
 function clampToBowl(x, y, z, thicknessMode) {
     if (!bowlCollision) return { x, y, z };
     
-    // Align physics with the visual top of the bowl
-    const topYOffset = bowl.radiusOuter * 0.2; 
-    const visualY = y - topYOffset;
-    
     const maxRadius = bowl.radiusOuter - (thicknessMode === 'thick' ? 24 : 12);
     
     // Only apply collision if we are below the top rim of the bowl
-    if (visualY > 0) {
-        const dist3D = Math.sqrt(x*x + visualY*visualY + z*z);
+    if (y > 0) {
+        const dist3D = Math.sqrt(x*x + y*y + z*z);
         if (dist3D > maxRadius) {
             const scale = maxRadius / dist3D;
             x *= scale; 
-            y = visualY * scale + topYOffset;
+            y *= scale;
             z *= scale;
         }
     }
