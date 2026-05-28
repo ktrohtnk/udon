@@ -443,16 +443,13 @@ function renderSideView(time) {
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
     
-            // Clip to the OUTSIDE front face of the bowl body AND the foot
-            createBowlBodyPath(ctx, topY);
-            // Additionally, add the front inner rim to exclude the inside
-            ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, 0, true);
-            ctx.clip('evenodd'); // Use evenodd to punch a hole for the top opening if necessary, though overlapping paths might need care. Actually, just standard clip is fine because createBowlBodyPath includes the left/right arcs correctly! Wait, createBowlBodyPath doesn't close the top opening via an ellipse, it closes via a straight line.
-            // Let's just use createBowlBodyPath directly for the outer silhouette clip!
-            // Wait, createBowlBodyPath goes from right to left arc. The top is closed with a straight line in `closePath()`.
-            // So clipping with it works perfectly.
+            // Clip to EXACTLY the front outer surface of the hemisphere (excluding the foot and the top opening)
             ctx.beginPath();
-            createBowlBodyPath(ctx, topY);
+            // 1. Right to left along the front rim
+            ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, 0, Math.PI, false);
+            // 2. Left to right along the bottom of the hemisphere
+            ctx.arc(bowl.x, topY, bowl.radiusOuter, Math.PI, 0, true);
+            ctx.closePath();
             ctx.clip();
     
             const isThin = bowlPattern === 'grid-thin';
@@ -466,13 +463,6 @@ function renderSideView(time) {
                 
                 ctx.beginPath();
                 ctx.ellipse(bowl.x, topY, Math.abs(rX), bowl.radiusOuter, 0, 0, Math.PI, false);
-                
-                // Continue line down the foot
-                const fX = footRadius * Math.cos(phi);
-                const intersectY = Math.sqrt(Math.pow(bowl.radiusOuter, 2) - Math.pow(fX, 2));
-                ctx.moveTo(bowl.x + fX, topY + intersectY);
-                ctx.lineTo(bowl.x + fX, footBottomY);
-                
                 ctx.stroke();
             }
     
@@ -489,11 +479,6 @@ function renderSideView(time) {
                     ctx.ellipse(bowl.x, topY + h, rX, rY, 0, 0, Math.PI, false);
                     ctx.stroke();
                 }
-                
-                // Add one horizontal line on the foot
-                ctx.beginPath();
-                ctx.ellipse(bowl.x, footBottomY - footHeight * 0.5, footRadius, footRadius * 0.15, 0, 0, Math.PI, false);
-                ctx.stroke();
             }
             ctx.restore();
         }
