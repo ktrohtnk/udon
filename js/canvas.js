@@ -252,12 +252,17 @@ function setupInput() {
         // Restore
         ctx = originalCtx;
         
-        // Download
-        const dataURL = exportCanvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.download = `udon_art_${Date.now()}.png`;
-        link.href = dataURL;
-        link.click();
+        // Download via Blob (safer for large images)
+        exportCanvas.toBlob(function(blob) {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = `udon_art_${Date.now()}.png`;
+            link.href = url;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }, 'image/png');
     };
     
     const addPoint = (e) => {
@@ -375,38 +380,40 @@ function renderSideViewOriginalGlass(time, topY, soupColor) {
     const theta = Math.asin(dy / bowl.radiusOuter);
 
     // 1. Draw Soup Volume (Color Fill)
-    ctx.beginPath();
-    for (let i = 0; i <= 40; i++) {
-        const t = i / 40;
-        const x = -soupRadiusX + (soupRadiusX * 2) * t;
-        const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
-        if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
-        else ctx.lineTo(bowl.x + x, soupLevel + wave);
-    }
-    ctx.arc(bowl.x, topY, bowl.radiusOuter, theta, Math.PI - theta, false);
-    ctx.closePath();
-    ctx.fillStyle = soupColor;
-    ctx.fill();
+    if (bowlPattern !== 'hidden') {
+        ctx.beginPath();
+        for (let i = 0; i <= 40; i++) {
+            const t = i / 40;
+            const x = -soupRadiusX + (soupRadiusX * 2) * t;
+            const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
+            if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
+            else ctx.lineTo(bowl.x + x, soupLevel + wave);
+        }
+        ctx.arc(bowl.x, topY, bowl.radiusOuter, theta, Math.PI - theta, false);
+        ctx.closePath();
+        ctx.fillStyle = soupColor;
+        ctx.fill();
 
-    // 2. Draw Soup Surface Line (Black Stroke)
-    ctx.beginPath();
-    for (let i = 0; i <= 40; i++) {
-        const t = i / 40;
-        const x = -soupRadiusX + (soupRadiusX * 2) * t;
-        const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
-        if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
-        else ctx.lineTo(bowl.x + x, soupLevel + wave);
-    }
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
+        // 2. Draw Soup Surface Line (Black Stroke)
+        ctx.beginPath();
+        for (let i = 0; i <= 40; i++) {
+            const t = i / 40;
+            const x = -soupRadiusX + (soupRadiusX * 2) * t;
+            const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
+            if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
+            else ctx.lineTo(bowl.x + x, soupLevel + wave);
+        }
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
 
-    // 3. Draw Back of Glass Bowl Rim
-    ctx.beginPath();
-    ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, Math.PI * 2);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
+        // 3. Draw Back of Glass Bowl Rim
+        ctx.beginPath();
+        ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, Math.PI * 2);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+    }
 
     // 4. Draw Items (Full: White Fill + Black Outline)
     const allItems = [...noodles, ...visualToppings].sort((a, b) => getDepth(a) - getDepth(b));
@@ -427,22 +434,24 @@ function renderSideViewOriginalGlass(time, topY, soupColor) {
     ctx.clip();
     
     // Redraw only fills with soupColor and isSubmerged = true for refraction
-    renderItems(allItems, currentPath, time, soupColor, true);
+    renderItems(allItems, currentPath, time, bowlPattern === 'hidden' ? '#fff' : soupColor, true);
     ctx.restore();
 
-    // 6. Draw Front of Glass Bowl Rim
-    ctx.beginPath();
-    ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, 0, Math.PI);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
+    if (bowlPattern !== 'hidden') {
+        // 6. Draw Front of Glass Bowl Rim
+        ctx.beginPath();
+        ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, 0, Math.PI);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
 
-    // 7. Draw Glass Bowl Body
-    ctx.beginPath();
-    ctx.arc(bowl.x, topY, bowl.radiusOuter, 0, Math.PI, false);
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
+        // 7. Draw Glass Bowl Body
+        ctx.beginPath();
+        ctx.arc(bowl.x, topY, bowl.radiusOuter, 0, Math.PI, false);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+    }
 }
 
 function renderSideView(time) {
@@ -450,13 +459,7 @@ function renderSideView(time) {
     const soupColor = activeSoupColor;
     
     // Branch based on bowlPattern
-    if (bowlPattern === 'hidden') {
-        const allItems = [...noodles, ...visualToppings].sort((a, b) => getDepth(a) - getDepth(b));
-        renderItems(allItems, currentPath, time, '#fff');
-        return;
-    }
-    
-    if (bowlPattern === 'glass') {
+    if (bowlPattern === 'glass' || bowlPattern === 'hidden') {
         renderSideViewOriginalGlass(time, topY, soupColor);
         return;
     }
@@ -625,37 +628,47 @@ function renderSideView(time) {
 }
 
 function renderTopView(time) {
-    if (bowlPattern === 'hidden') {
-        const allItems = [...noodles, ...visualToppings].sort((a, b) => getDepth(a) - getDepth(b));
-        renderItems(allItems, currentPath, time, '#fff');
-        return;
-    }
-
     const soupColor = activeSoupColor;
 
-    // Soup is a circle inside
-    ctx.beginPath();
-    ctx.arc(bowl.x, bowl.y, bowl.radiusInner, 0, Math.PI * 2);
-    ctx.fillStyle = soupColor;
-    ctx.fill();
+    if (bowlPattern !== 'hidden') {
+        // Soup is a circle inside
+        ctx.beginPath();
+        ctx.arc(bowl.x, bowl.y, bowl.radiusInner, 0, Math.PI * 2);
+        ctx.fillStyle = soupColor;
+        ctx.fill();
 
-    // Draw Bowl Outer Rim
-    ctx.beginPath();
-    ctx.arc(bowl.x, bowl.y, bowl.radiusOuter, 0, Math.PI * 2);
-    ctx.lineWidth = bowlPattern === 'grid-thick' ? 5 : 1.5;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
-    
-    // Draw Bowl Inner Rim
-    ctx.beginPath();
-    ctx.arc(bowl.x, bowl.y, bowl.radiusInner, 0, Math.PI * 2);
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
+        // Draw Bowl Outer Rim
+        ctx.beginPath();
+        ctx.arc(bowl.x, bowl.y, bowl.radiusOuter, 0, Math.PI * 2);
+        ctx.lineWidth = bowlPattern === 'grid-thick' ? 5 : 1.5;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+        
+        // Draw Bowl Inner Rim
+        ctx.beginPath();
+        ctx.arc(bowl.x, bowl.y, bowl.radiusInner, 0, Math.PI * 2);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+    }
 
     // Draw Items
     const allItems = [...noodles, ...visualToppings].sort((a, b) => getDepth(a) - getDepth(b));
     renderItems(allItems, currentPath, time, '#fff');
+
+    if (bowlPattern !== 'hidden') {
+        // In Top View, submerged parts (refraction) could be added here if desired, 
+        // but traditionally we just drew it once.
+        // If we want refraction in top view, we clip to the inner radius and redraw.
+    }
+    
+    // Actually, let's keep top view distortion consistent with side view!
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(bowl.x, bowl.y, bowl.radiusInner, 0, Math.PI * 2);
+    ctx.clip();
+    renderItems(allItems, currentPath, time, bowlPattern === 'hidden' ? '#fff' : soupColor, true);
+    ctx.restore();
 }
 
 function drawTopping(topping, time, layerType, soupColorOverride, isSubmerged = false) {
