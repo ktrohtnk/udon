@@ -73,49 +73,21 @@ export function setBowlPattern(pattern) {
 function clampToBowl(x, y, z, thicknessMode) {
     if (!bowlCollision) return { x, y, z };
     
-    if (bowlPattern === 'glass') {
-        const maxRadius = bowl.radiusOuter - (thicknessMode === 'thick' ? 24 : 12);
-        if (y > 0) {
-            const dist3D = Math.sqrt(x*x + y*y + z*z);
-            if (dist3D > maxRadius) {
-                const scale = maxRadius / dist3D;
-                x *= scale; y *= scale; z *= scale;
-            }
-        } else {
-            const dist2D = Math.sqrt(x*x + z*z);
-            if (dist2D > maxRadius) {
-                const scale = maxRadius / dist2D;
-                x *= scale; z *= scale;
-            }
+    // Use hemisphere (glass) logic for all bowls now, since they all use the hemisphere base
+    const maxRadius = bowl.radiusOuter - (thicknessMode === 'thick' ? 24 : 12);
+    if (y > 0) {
+        const dist3D = Math.sqrt(x*x + y*y + z*z);
+        if (dist3D > maxRadius) {
+            const scale = maxRadius / dist3D;
+            x *= scale; y *= scale; z *= scale;
         }
-        return { x, y, z };
-    }
-
-    const maxRadiusTop = bowl.radiusOuter - (thicknessMode === 'thick' ? 24 : 12);
-    const maxRadiusBot = bowl.radiusBottom - (thicknessMode === 'thick' ? 24 : 12);
-    
-    let maxRadius;
-    if (y <= 0) {
-        maxRadius = maxRadiusTop;
-    } else if (y >= bowl.depth) {
-        maxRadius = maxRadiusBot;
     } else {
-        // Linear interpolation for conical shape
-        maxRadius = maxRadiusTop - (maxRadiusTop - maxRadiusBot) * (y / bowl.depth);
+        const dist2D = Math.sqrt(x*x + z*z);
+        if (dist2D > maxRadius) {
+            const scale = maxRadius / dist2D;
+            x *= scale; z *= scale;
+        }
     }
-    
-    // Horizontal clamping
-    const dist2D = Math.sqrt(x*x + z*z);
-    if (dist2D > maxRadius) {
-        const scale = maxRadius / dist2D;
-        x *= scale; z *= scale;
-    }
-    
-    // Vertical clamping (don't penetrate the bottom)
-    if (y > bowl.depth) {
-        y = bowl.depth;
-    }
-    
     return { x, y, z };
 }
 
@@ -364,16 +336,38 @@ function getDepth(item) {
 }
 
 function createBowlBodyPath(ctx, topY) {
-    const bottomY = topY + bowl.depth;
+    const footRadius = bowl.radiusOuter * 0.4;
+    const footHeight = 15;
+    
+    // Angle where the foot intersects the hemisphere
+    const thetaRight = Math.acos(footRadius / bowl.radiusOuter);
+    const thetaLeft = Math.PI - thetaRight;
+    
     ctx.beginPath();
-    ctx.moveTo(bowl.x - bowl.radiusOuter, topY);
-    ctx.quadraticCurveTo(bowl.x - bowl.radiusOuter * 0.9, topY + bowl.depth * 0.5, bowl.x - bowl.radiusBottom, bottomY);
-    ctx.ellipse(bowl.x, bottomY, bowl.radiusBottom, bowl.radiusBottom * 0.15, 0, Math.PI, 0, true);
-    ctx.quadraticCurveTo(bowl.x + bowl.radiusOuter * 0.9, topY + bowl.depth * 0.5, bowl.x + bowl.radiusOuter, topY);
+    // 1. Right arc from 0 to thetaRight
+    ctx.arc(bowl.x, topY, bowl.radiusOuter, 0, thetaRight, false);
+    
+    // 2. Right side of the foot
+    const footBottomY = topY + bowl.radiusOuter + footHeight; 
+    ctx.lineTo(bowl.x + footRadius, footBottomY);
+    
+    // 3. Bottom of the foot (curve)
+    ctx.ellipse(bowl.x, footBottomY, footRadius, footRadius * 0.15, 0, 0, Math.PI, false);
+    
+    // 4. Left side of the foot
+    ctx.lineTo(bowl.x - footRadius, topY + bowl.radiusOuter * Math.sin(thetaLeft));
+    
+    // 5. Left arc from thetaLeft to Math.PI
+    ctx.arc(bowl.x, topY, bowl.radiusOuter, thetaLeft, Math.PI, false);
+    
+    ctx.closePath();
 }
 
-function renderSideViewOriginalGlass(time, topY, soupColor) {
-    // Soup physics
+function renderSideView(time) {
+    const topY = bowl.y + bowl.radiusOuter * 0.2;
+    const soupColor = activeSoupColor;
+    
+    // Soup physics (hemisphere)
     const soupLevel = topY + bowl.radiusOuter * 0.3;
     const dy = soupLevel - topY;
     const soupRadiusX = Math.sqrt(Math.pow(bowl.radiusOuter, 2) - Math.pow(dy, 2));
@@ -438,193 +432,85 @@ function renderSideViewOriginalGlass(time, topY, soupColor) {
     ctx.restore();
 
     if (bowlPattern !== 'hidden') {
-        // 6. Draw Front of Glass Bowl Rim
-        ctx.beginPath();
-        ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, 0, Math.PI);
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = '#000';
-        ctx.stroke();
-
-        // 7. Draw Glass Bowl Body
-        ctx.beginPath();
-        ctx.arc(bowl.x, topY, bowl.radiusOuter, 0, Math.PI, false);
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = '#000';
-        ctx.stroke();
-    }
-}
-
-function renderSideView(time) {
-    const topY = bowl.y + bowl.radiusOuter * 0.2;
-    const soupColor = activeSoupColor;
+        const footRadius = bowl.radiusOuter * 0.4;
+        const footHeight = 15;
+        const footBottomY = topY + bowl.radiusOuter + footHeight; 
+        
+        // 6. Draw Bowl Pattern on transparent body
+        if (bowlPattern !== 'glass' && bowlPattern !== 'clear') {
+            ctx.save();
+            ctx.strokeStyle = '#000';
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
     
-    // Branch based on bowlPattern
-    if (bowlPattern === 'glass' || bowlPattern === 'hidden') {
-        renderSideViewOriginalGlass(time, topY, soupColor);
-        return;
-    }
-    
-    // --- New Conical Bowl Logic ---
-    const bottomY = topY + bowl.depth;
-    
-    // Soup physics
-    const soupLevel = topY + bowl.depth * 0.25;
-    const soupRadiusX = bowl.radiusOuter - (bowl.radiusOuter - bowl.radiusBottom) * 0.25;
-
-    // 1. Draw Soup Volume (Color Fill)
-    ctx.save();
-    ctx.beginPath();
-    for (let i = 0; i <= 40; i++) {
-        const t = i / 40;
-        const x = -soupRadiusX + (soupRadiusX * 2) * t;
-        const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
-        if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
-        else ctx.lineTo(bowl.x + x, soupLevel + wave);
-    }
-    ctx.lineTo(bowl.x + bowl.radiusOuter, height);
-    ctx.lineTo(bowl.x - bowl.radiusOuter, height);
-    ctx.closePath();
-    ctx.clip(); // Clip everything below the soup surface
-    
-    // Fill the bowl body
-    createBowlBodyPath(ctx, topY);
-    ctx.fillStyle = soupColor;
-    ctx.fill();
-    ctx.restore();
-
-    // 2. Draw Soup Surface Line (Black Stroke)
-    ctx.beginPath();
-    for (let i = 0; i <= 40; i++) {
-        const t = i / 40;
-        const x = -soupRadiusX + (soupRadiusX * 2) * t;
-        const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
-        if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
-        else ctx.lineTo(bowl.x + x, soupLevel + wave);
-    }
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
-
-    // 3. Draw Back of Glass Bowl Rim
-    ctx.beginPath();
-    ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, Math.PI * 2);
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
-
-    // 4. Draw Items (Full: White Fill + Black Outline)
-    const allItems = [...noodles, ...visualToppings].sort((a, b) => getDepth(a) - getDepth(b));
-    renderItems(allItems, currentPath, time, '#fff');
-
-    // 5. Draw Noodles (Clipped to Soup: Color Fill)
-    ctx.save();
-    ctx.beginPath();
-    for (let i = 0; i <= 40; i++) {
-        const t = i / 40;
-        const x = -soupRadiusX + (soupRadiusX * 2) * t;
-        const wave = Math.sin(x * 0.05 + time * 0.003) * 6;
-        if (i === 0) ctx.moveTo(bowl.x + x, soupLevel + wave);
-        else ctx.lineTo(bowl.x + x, soupLevel + wave);
-    }
-    ctx.lineTo(bowl.x + bowl.radiusOuter, height);
-    ctx.lineTo(bowl.x - bowl.radiusOuter, height);
-    ctx.closePath();
-    ctx.clip();
-    
-    createBowlBodyPath(ctx, topY);
-    ctx.closePath(); // Ensure path is closed before clipping
-    ctx.clip();
-    
-    // Redraw only fills with soupColor and isSubmerged = true for refraction
-    renderItems(allItems, currentPath, time, soupColor, true);
-    ctx.restore();
-
-    // 6. Draw Bowl Foot (Koudai)
-    const footHeight = bowl.radiusOuter * 0.12;
-    const footRadius = bowl.radiusBottom * 0.7;
-    ctx.beginPath();
-    ctx.moveTo(bowl.x - footRadius, bottomY);
-    ctx.lineTo(bowl.x - footRadius * 0.95, bottomY + footHeight);
-    ctx.ellipse(bowl.x, bottomY + footHeight, footRadius * 0.95, footRadius * 0.95 * 0.15, 0, Math.PI, 0, true);
-    ctx.lineTo(bowl.x + footRadius, bottomY);
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
-
-    // 7. Draw Bowl Pattern on transparent glass
-    if (bowlPattern !== 'clear') {
-        ctx.save();
-        ctx.strokeStyle = '#000';
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        // Clip to the OUTSIDE front face of the bowl body AND the foot
-        ctx.beginPath();
-        ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, 0, true); // Left to right front rim
-        ctx.quadraticCurveTo(bowl.x + bowl.radiusOuter * 0.9, topY + bowl.depth * 0.5, bowl.x + bowl.radiusBottom, bottomY); // Right side
-        ctx.lineTo(bowl.x + footRadius, bottomY); // To foot
-        ctx.lineTo(bowl.x + footRadius * 0.95, bottomY + footHeight); // Down foot
-        ctx.ellipse(bowl.x, bottomY + footHeight, footRadius * 0.95, footRadius * 0.95 * 0.15, 0, 0, Math.PI, false); // Bottom foot curve (right to left)
-        ctx.lineTo(bowl.x - footRadius, bottomY); // Up foot
-        ctx.lineTo(bowl.x - bowl.radiusBottom, bottomY); // To bottom edge
-        ctx.quadraticCurveTo(bowl.x - bowl.radiusOuter * 0.9, topY + bowl.depth * 0.5, bowl.x - bowl.radiusOuter, topY); // Left side
-        ctx.clip();
-
-        const isThin = bowlPattern === 'grid-thin';
-        const numVertical = isThin ? 16 : (bowlPattern === 'stripe' ? 10 : 8);
-        ctx.lineWidth = isThin ? 1 : (bowlPattern === 'stripe' ? 8 : 4);
-
-        // Vertical lines
-        for (let i = 1; i < numVertical; i++) {
-            const t = (i / numVertical) * Math.PI - (Math.PI / 2);
-            const xTop = bowl.radiusOuter * Math.sin(t);
-            const xBot = bowl.radiusBottom * Math.sin(t);
-            const xFoot = footRadius * Math.sin(t);
-            
-            const yTop = topY + (bowl.radiusOuter * 0.15) * Math.cos(t);
-            const yBot = bottomY + (bowl.radiusBottom * 0.15) * Math.cos(t);
-            const yFootBot = bottomY + footHeight + (footRadius * 0.95 * 0.15) * Math.cos(t);
-            
+            // Clip to the OUTSIDE front face of the bowl body AND the foot
+            createBowlBodyPath(ctx, topY);
+            // Additionally, add the front inner rim to exclude the inside
+            ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, Math.PI, 0, true);
+            ctx.clip('evenodd'); // Use evenodd to punch a hole for the top opening if necessary, though overlapping paths might need care. Actually, just standard clip is fine because createBowlBodyPath includes the left/right arcs correctly! Wait, createBowlBodyPath doesn't close the top opening via an ellipse, it closes via a straight line.
+            // Let's just use createBowlBodyPath directly for the outer silhouette clip!
+            // Wait, createBowlBodyPath goes from right to left arc. The top is closed with a straight line in `closePath()`.
+            // So clipping with it works perfectly.
             ctx.beginPath();
-            ctx.moveTo(bowl.x + xTop, yTop);
-            const xCp = (bowl.radiusOuter * 0.9) * Math.sin(t);
-            ctx.quadraticCurveTo(bowl.x + xCp, topY + bowl.depth * 0.5, bowl.x + xBot, yBot);
-            // Continue into foot
-            ctx.lineTo(bowl.x + xFoot, yFootBot);
-            ctx.stroke();
-        }
-
-        // Horizontal lines
-        if (bowlPattern.startsWith('grid')) {
-            const numHorizontal = isThin ? 8 : 5;
-            for (let i = 1; i <= numHorizontal; i++) { // Go to numHorizontal
-                const t = i / (numHorizontal + 1);
-                const h = bowl.depth * t;
-                const r = bowl.radiusOuter - (bowl.radiusOuter - bowl.radiusBottom) * t;
-                const rx = r * (1 + 0.1 * Math.sin(t * Math.PI)); // match convex curve
-                const ry = rx * 0.15;
+            createBowlBodyPath(ctx, topY);
+            ctx.clip();
+    
+            const isThin = bowlPattern === 'grid-thin';
+            const numVertical = isThin ? 16 : (bowlPattern === 'stripe' ? 10 : 8);
+            ctx.lineWidth = isThin ? 1 : (bowlPattern === 'stripe' ? 8 : 4);
+    
+            // Vertical lines (Meridians)
+            for (let i = 1; i < numVertical; i++) {
+                const phi = (i / numVertical) * Math.PI;
+                const rX = bowl.radiusOuter * Math.cos(phi);
+                
                 ctx.beginPath();
-                ctx.ellipse(bowl.x, topY + h, rx, ry, 0, 0, Math.PI);
+                ctx.ellipse(bowl.x, topY, Math.abs(rX), bowl.radiusOuter, 0, 0, Math.PI, false);
+                
+                // Continue line down the foot
+                const fX = footRadius * Math.cos(phi);
+                const intersectY = Math.sqrt(Math.pow(bowl.radiusOuter, 2) - Math.pow(fX, 2));
+                ctx.moveTo(bowl.x + fX, topY + intersectY);
+                ctx.lineTo(bowl.x + fX, footBottomY);
+                
                 ctx.stroke();
             }
-            // Add one horizontal line on the foot
-            ctx.beginPath();
-            ctx.ellipse(bowl.x, bottomY + footHeight * 0.5, footRadius * 0.95, footRadius * 0.95 * 0.15, 0, 0, Math.PI);
-            ctx.stroke();
+    
+            // Horizontal lines (Latitudes)
+            if (bowlPattern.startsWith('grid')) {
+                const numHorizontal = isThin ? 8 : 5;
+                for (let i = 1; i <= numHorizontal; i++) {
+                    const thetaVal = (i / (numHorizontal + 1)) * (Math.PI / 2); // 0 to 90 degrees
+                    const h = bowl.radiusOuter * Math.sin(thetaVal);
+                    const rX = bowl.radiusOuter * Math.cos(thetaVal);
+                    const rY = rX * 0.15; // perspective
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(bowl.x, topY + h, rX, rY, 0, 0, Math.PI, false);
+                    ctx.stroke();
+                }
+                
+                // Add one horizontal line on the foot
+                ctx.beginPath();
+                ctx.ellipse(bowl.x, footBottomY - footHeight * 0.5, footRadius, footRadius * 0.15, 0, 0, Math.PI, false);
+                ctx.stroke();
+            }
+            ctx.restore();
         }
-        ctx.restore();
+
+        // 7. Draw Front of Glass Bowl Rim
+        ctx.beginPath();
+        ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, 0, Math.PI);
+        ctx.lineWidth = bowlPattern === 'grid-thick' ? 5 : 1.5;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+
+        // 8. Draw Glass Bowl Body Outline (includes foot)
+        createBowlBodyPath(ctx, topY);
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
     }
-
-    // 8. Draw Front of Glass Bowl Rim & Body Strokes
-    ctx.beginPath();
-    ctx.ellipse(bowl.x, topY, bowl.radiusOuter, bowl.radiusOuter * 0.15, 0, 0, Math.PI);
-    ctx.lineWidth = bowlPattern === 'grid-thick' ? 5 : 1.5;
-    ctx.strokeStyle = '#000';
-    ctx.stroke();
-
-    createBowlBodyPath(ctx, topY);
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
 }
 
 function renderTopView(time) {
