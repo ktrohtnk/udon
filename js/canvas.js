@@ -73,21 +73,24 @@ export function setBowlPattern(pattern) {
 function clampToBowl(x, y, z, thicknessMode) {
     if (!bowlCollision) return { x, y, z };
     
-    // Use hemisphere (glass) logic for all bowls now, since they all use the hemisphere base
+    // Align physics with the visual top of the bowl
+    const topYOffset = bowl.radiusOuter * 0.2; 
+    const visualY = y - topYOffset;
+    
     const maxRadius = bowl.radiusOuter - (thicknessMode === 'thick' ? 24 : 12);
-    if (y > 0) {
-        const dist3D = Math.sqrt(x*x + y*y + z*z);
+    
+    // Only apply collision if we are below the top rim of the bowl
+    if (visualY > 0) {
+        const dist3D = Math.sqrt(x*x + visualY*visualY + z*z);
         if (dist3D > maxRadius) {
             const scale = maxRadius / dist3D;
-            x *= scale; y *= scale; z *= scale;
-        }
-    } else {
-        const dist2D = Math.sqrt(x*x + z*z);
-        if (dist2D > maxRadius) {
-            const scale = maxRadius / dist2D;
-            x *= scale; z *= scale;
+            x *= scale; 
+            y = visualY * scale + topYOffset;
+            z *= scale;
         }
     }
+    // No clamping above the bowl, allowing noodles to be lifted out freely
+    
     return { x, y, z };
 }
 
